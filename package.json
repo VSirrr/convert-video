@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host --port 3000",
-    "build:client": "vite build"
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "author": "vsirrr",
   "license": "Apache-2.0",

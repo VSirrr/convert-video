@@ -27,8 +27,7 @@ export const loadFFmpeg = async (): Promise<boolean> => {
     if (loaded) {
       return true;
     }
-    const baseURL =
-      "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd";
+    const baseURL = "/assets/core/package/dist/esm";
     // 加载FFmpeg核心
     await ffmpeg.load({
       coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
@@ -115,10 +114,10 @@ export const convertVideo = async (
     await ffmpeg.exec(commands);
 
     // 读取输出文件
-    const data = await ffmpeg.readFile(outputFileName);
-
-    // 创建Blob对象
+    const fileData = await ffmpeg.readFile(outputFileName);
     // @ts-ignore
+    const data = new Uint8Array(fileData as ArrayBuffer);
+    // 创建Blob对象
     const blob = new Blob([data.buffer], { type: `video/${outputFormat}` });
 
     // 创建File对象
@@ -129,11 +128,6 @@ export const convertVideo = async (
         type: `video/${outputFormat}`,
       }
     );
-
-    // 清理临时文件
-    // await ffmpeg.unlink(inputFileName);
-    // await ffmpeg.unlink(outputFileName);
-
     return outputFile;
   } catch (error) {
     console.error("Failed to convert video:", error);
