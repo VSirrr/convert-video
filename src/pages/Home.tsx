@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useTheme } from "@/hooks/useTheme";
 import { toast } from "sonner";
@@ -81,9 +81,9 @@ const Home = () => {
     "upload"
   );
   const [selectedFormat, setSelectedFormat] = useState("mp4");
-  const [selectedResolution, setSelectedResolution] = useState("1080p");
-  const [selectedQuality, setSelectedQuality] = useState("high");
-  const [selectedFps, setSelectedFps] = useState("30");
+  const [selectedResolution, setSelectedResolution] = useState("original");
+  const [selectedQuality, setSelectedQuality] = useState("original");
+  const [selectedFps, setSelectedFps] = useState("original");
   const [isConverting, setIsConverting] = useState(false);
   const [conversionProgress, setConversionProgress] = useState(0);
   const [conversionHistory, setConversionHistory] = useState<
@@ -105,6 +105,12 @@ const Home = () => {
     return [];
   });
   const [isLoadingFFmpeg, setIsLoadingFFmpeg] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      cancelFfmpegConversion();
+    };
+  }, []);
 
   // 保存历史记录到localStorage（不包含文件数据）
   const saveHistoryToLocalStorage = (history: ConversionHistoryItem[]) => {
@@ -175,6 +181,7 @@ const Home = () => {
 
   // 开始转换
   const startConversion = async () => {
+    setConversionProgress(0);
     if (!selectedFile) {
       toast.error("请先选择一个视频文件");
       return;
@@ -192,7 +199,6 @@ const Home = () => {
       }
       setIsLoadingFFmpeg(false);
       setIsConverting(true);
-      setConversionProgress(0);
 
       // 获取质量值
       const qualityOption = QUALITY_OPTIONS.find(
@@ -217,22 +223,6 @@ const Home = () => {
       setConversionHistory((prev) => [newHistoryItem, ...prev]);
       saveHistoryToLocalStorage([newHistoryItem, ...conversionHistory]);
 
-      // 创建进度更新定时器
-      let lastProgressUpdate = Date.now();
-      const progressInterval = setInterval(() => {
-        const now = Date.now();
-        // 仅当超过一定时间间隔时才更新进度，避免频繁更新
-        if (now - lastProgressUpdate > 1000) {
-          lastProgressUpdate = now;
-          // 这里我们模拟进度增加，实际应用中应该解析FFmpeg日志
-          const newProgress = Math.min(
-            conversionProgress + Math.random() * 5,
-            95
-          );
-          updateConversionProgress(newProgress);
-        }
-      }, 500);
-
       // 执行实际的视频转换
       const startTime = Date.now();
       const convertedFile = await convertVideo(
@@ -243,9 +233,6 @@ const Home = () => {
         fpsValue,
         updateConversionProgress
       );
-
-      // 清除进度定时器
-      clearInterval(progressInterval);
 
       // 更新进度为100%
       updateConversionProgress(100);
@@ -282,7 +269,6 @@ const Home = () => {
       }, 1000);
     } catch (error) {
       console.error("视频转换失败:", error);
-
       setIsConverting(false);
       setIsLoadingFFmpeg(false);
       toast.error("视频转换失败，请重试");
@@ -600,7 +586,10 @@ const Home = () => {
                   >
                     文件名:
                   </span>
-                  <span className="font-medium truncate max-w-[150px]">
+                  <span
+                    className="font-medium truncate"
+                    title={selectedFile.name}
+                  >
                     {selectedFile.name}
                   </span>
                 </li>
@@ -884,7 +873,9 @@ const Home = () => {
                           }`}
                         >
                           <td className="py-4">
-                            <div className="font-medium">{item.fileName}</div>
+                            <div className="font-medium" title={item.fileName}>
+                              {item.fileName}
+                            </div>
                           </td>
                           <td className="py-4">
                             <div className="text-sm">

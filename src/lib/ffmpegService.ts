@@ -3,8 +3,6 @@ import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { fetchFile, toBlobURL } from "@ffmpeg/util";
 import { toast } from "sonner";
 
-let loaded: Boolean = false;
-
 // 创建FFmpeg实例
 let ffmpegInstance: FFmpeg | null = null;
 
@@ -20,11 +18,8 @@ const getFFmpegInstance = (): FFmpeg => {
 export const loadFFmpeg = async (): Promise<boolean> => {
   try {
     const ffmpeg = getFFmpegInstance();
-    ffmpeg.on("log", ({ message }) => {
-      console.log(message);
-    });
     // 检查是否已加载
-    if (loaded) {
+    if (ffmpeg.loaded) {
       return true;
     }
     const baseURL = "/assets/core/package/dist/esm";
@@ -54,8 +49,17 @@ export const convertVideo = async (
   onProgress: (progress: number) => void
 ): Promise<File> => {
   try {
+    // 获取 ffmpeg 实例对象
     const ffmpeg = getFFmpegInstance();
-    await loadFFmpeg();
+
+    // 注册事件
+    // ffmpeg.on("log", ({ message }) => {
+    //   console.log(message);
+    // });
+    ffmpeg.on("progress", ({ progress, time }) => {
+      console.log(progress, time);
+      onProgress(progress * 100);
+    });
 
     // 写入输入文件
     const inputExtension = file.name.split(".").pop() || "mp4";
@@ -107,16 +111,15 @@ export const convertVideo = async (
     // 添加输出文件名
     commands.push(outputFileName);
 
-    // 开始转换前的准备工作
-    onProgress(0);
-
     // 执行转换
     await ffmpeg.exec(commands);
 
     // 读取输出文件
     const fileData = await ffmpeg.readFile(outputFileName);
+
     // @ts-ignore
     const data = new Uint8Array(fileData as ArrayBuffer);
+
     // 创建Blob对象
     const blob = new Blob([data.buffer], { type: `video/${outputFormat}` });
 
@@ -137,9 +140,9 @@ export const convertVideo = async (
 
 // 取消转换
 export const cancelConversion = () => {
-  // 重置FFmpeg实例来实现取消
-  if (ffmpegInstance) {
-    ffmpegInstance = null;
+  const ffmpeg = getFFmpegInstance();
+  if (ffmpeg) {
+    ffmpeg.terminate();
     console.log("Conversion cancelled");
   }
 };
